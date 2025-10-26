@@ -2,6 +2,11 @@
 
 A Chrome extension that enables users to store and retrieve AI chat conversations across different platforms using hosted vector storage and semantic search capabilities.
 
+## 🚀 Quick Start Options
+
+> **📖 [LOCAL_USAGE.md](./LOCAL_USAGE.md)** - **Easiest setup!** Just load extension in Chrome  
+> **📋 [README.md](./README.md)** - Complete setup with self-hosted backend
+
 ## 🚀 Features
 
 - **Universal Chat Storage**: Automatically captures conversations from various AI platforms (ChatGPT, Gemini, etc.)
