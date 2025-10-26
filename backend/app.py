@@ -437,9 +437,16 @@ async def root():
 
 if __name__ == "__main__":
     import uvicorn
-    ("🚀 Starting SabkiSoch Backend...")
-    ("📡 API will be available at: http://localhost:8000")
-    ("📚 API docs available at: http://localhost:8000/docs")
-    ("❤️  Health check at: http://localhost:8000/health")
-    ("=" * 50)
-    uvicorn.run(app, host="0.0.0.0", port=8000)
+    import os
+    
+    # Get port from environment (Railway sets this)
+    port = int(os.environ.get("PORT", 8000))
+    host = os.environ.get("HOST", "0.0.0.0")
+    
+    print("🚀 Starting SabkiSoch Backend...")
+    print(f"📡 API will be available at: http://{host}:{port}")
+    print(f"📚 API docs available at: http://{host}:{port}/docs")
+    print(f"❤️  Health check at: http://{host}:{port}/health")
+    print("=" * 50)
+    
+    uvicorn.run(app, host=host, port=port)
