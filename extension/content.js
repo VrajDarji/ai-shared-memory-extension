@@ -58,11 +58,11 @@ if (!window.__SABKI_SOCH_INJECTED_LOADED__) {
             s.remove();
         }
         s.onerror = (e) => {
-            ('⚠️ Failed to inject injected.js:', e);
+            console.error('⚠️ Failed to inject injected.js:', e);
         }
         (document.head || document.documentElement).appendChild(s);
     } catch (e) {
-        ('⚠️ Error injecting script:', e);
+        console.error('⚠️ Error injecting script:', e);
         // If chrome.runtime.getURL fails, try to load from a relative path
         try {
             const s2 = document.createElement('script');
@@ -72,11 +72,11 @@ if (!window.__SABKI_SOCH_INJECTED_LOADED__) {
                 s2.remove();
             }
             s2.onerror = (e2) => {
-                ('⚠️ Failed to load injected.js via fallback:', e2);
+                console.error('⚠️ Failed to load injected.js via fallback:', e2);
             }
             (document.head || document.documentElement).appendChild(s2);
         } catch (e2) {
-            ('⚠️ All injection methods failed:', e2);
+            console.error('⚠️ All injection methods failed:', e2);
         }
     }
 } else {
@@ -101,10 +101,10 @@ window.addEventListener('message', async (event) => {
             chrome.runtime.sendMessage({ action: 'page_api_data', payload });
         } catch (e) {
             // Silently ignore extension context errors
-            ('⚠️ Extension context unavailable, skipping message');
+            console.error('⚠️ Extension context unavailable, skipping message');
         }
     } catch (e) {
-        ('⚠️ Error processing message:', e);
+        console.error('⚠️ Error processing message:', e);
     }
 });
 
@@ -341,7 +341,6 @@ function scrapeVisibleChat() {
 
     // If no specific conversations found, try fallback with better filtering
     if (conversations.length === 0) {
-        ('⚠️ No specific conversation elements found, trying fallback...');
         return scrapeWithFallback();
     }
 
@@ -425,7 +424,6 @@ function scrapeWithFallback() {
     });
 
     if (conversations.length === 0) {
-        ('❌ No conversation content found');
         return '';
     }
 
@@ -463,7 +461,6 @@ async function storeToBackend(payload) {
 
 // Listen for messages from the popup
 chrome.runtime.onMessage.addListener(async (request, sender, sendResponse) => {
-    ('📨 Content script received message:', request);
 
     if (request.action === 'store_context') {
         // Respond immediately to prevent port closure
@@ -519,12 +516,10 @@ chrome.runtime.onMessage.addListener(async (request, sender, sendResponse) => {
                 const data = await result.json();
 
                 if (!data || !data.context || data.context.length === 0) {
-                    ('ℹ️ No context generated');
                     showContextNotification(0, 'No conversations found to generate context from');
                     return;
                 }
 
-                (`🧠 Generated intelligent context from ${data.conversation_count} conversations`);
 
                 // Store the generated context (not raw conversations)
                 window.__SABKI_SOCH_CONTEXT__ = [{
@@ -538,24 +533,20 @@ chrome.runtime.onMessage.addListener(async (request, sender, sendResponse) => {
                 }];
 
                 // Auto-inject context and send
-                ('🚀 Auto-injecting generated context and sending...');
                 injectContextIntoAI();
 
                 // Auto-send after a short delay
                 setTimeout(() => {
                     const sendButton = findSendButton();
                     if (sendButton) {
-                        ('🚀 Auto-sending generated context...');
                         sendButton.click();
                     } else {
-                        ('❌ Send button not found for auto-send');
                     }
                 }, 1000);
 
                 // Create a subtle notification
                 showContextNotification(data.conversation_count, 'Intelligent context generated and sent');
 
-                ('✅ Intelligent context generated and sent automatically');
             } catch (error) {
                 console.error('❌ Context generation failed:', error);
                 showContextNotification(0, 'Failed to generate context');
@@ -573,7 +564,6 @@ chrome.runtime.onMessage.addListener(async (request, sender, sendResponse) => {
         (async () => {
             try {
                 if (!window.__SABKI_SOCH_CONTEXT__) {
-                    ('ℹ️ No context loaded, generating intelligent context...');
                     // Generate intelligent context first
                     const userId = await getOrCreateUserId();
                     const result = await fetch(`${BACKEND_URL}/generate_context`, {
@@ -589,7 +579,6 @@ chrome.runtime.onMessage.addListener(async (request, sender, sendResponse) => {
                     });
 
                     const data = await result.json();
-                    ('🧠 Generated context response for inject:', data);
 
                     if (data && data.context && data.context.length > 0) {
                         window.__SABKI_SOCH_CONTEXT__ = [{
@@ -601,17 +590,13 @@ chrome.runtime.onMessage.addListener(async (request, sender, sendResponse) => {
                                 context_length: data.context_length
                             }
                         }];
-                        ('✅ Intelligent context generated:', data.conversation_count, 'conversations processed');
                     } else {
-                        ('ℹ️ No context generated from backend');
                     }
                 }
 
                 if (window.__SABKI_SOCH_CONTEXT__) {
                     injectContextIntoAI();
-                    ('✅ Intelligent context injected into AI system');
                 } else {
-                    ('ℹ️ No context available to inject');
                 }
             } catch (error) {
                 console.error('❌ Context injection failed:', error);
@@ -720,37 +705,37 @@ function showContextNotification(count, message = null) {
 
 // Smart context injection - inject context as first message (simple approach)
 function injectContextIntoAI() {
-    ('🎯 Injecting context as first message...');
 
     // Get stored context
     if (!window.__SABKI_SOCH_CONTEXT__ || window.__SABKI_SOCH_CONTEXT__.length === 0) {
-        ('❌ No context available');
         showContextNotification(0, 'No context available - store some conversations first');
         return;
     }
 
     // Find chat input elements
     const inputSelectors = [
+        'div[contenteditable="true"]',                 // Some platforms use div
+        'div#prompt-textarea[contenteditable="true"]', // ChatGPT specific prompt area
+        'div.ProseMirror[contenteditable="true"]',     // ChatGPT ProseMirror editor
+        'div[data-virtualkeyboard="true"]',           // ChatGPT virtual keyboard
         'textarea[placeholder*="message" i]',           // Gemini
         'textarea[placeholder*="ask" i]',              // ChatGPT
         'textarea[placeholder*="prompt" i]',           // Claude
         'textarea[data-testid*="textbox"]',            // Generic
-        'div[contenteditable="true"]',                 // Some platforms use div
         'textarea',                                    // Fallback to any textarea
-        'input[type="text"]'                           // Fallback to text input
+        'input[type="text"]',
+        'prompt-textarea'                           // Fallback to text input
     ];
 
     let inputElement = null;
     for (const selector of inputSelectors) {
         inputElement = document.querySelector(selector);
         if (inputElement) {
-            (`✅ Found input element with selector: ${selector}`);
             break;
         }
     }
 
     if (!inputElement) {
-        ('❌ No chat input found');
         showContextNotification(0, 'No chat input found');
         return;
     }
@@ -762,7 +747,26 @@ function injectContextIntoAI() {
     if (inputElement.tagName === 'TEXTAREA' || inputElement.tagName === 'INPUT') {
         inputElement.value = contextText;
     } else {
-        inputElement.textContent = contextText;
+        // For contenteditable divs (like ChatGPT), we need to handle p tags
+        if (inputElement.contentEditable === 'true') {
+            // Clear existing content
+            inputElement.innerHTML = '';
+
+            // Create a p tag and set the text
+            const pTag = document.createElement('p');
+            pTag.textContent = contextText;
+            inputElement.appendChild(pTag);
+
+            // Set cursor position to end
+            const range = document.createRange();
+            const sel = window.getSelection();
+            range.selectNodeContents(pTag);
+            range.collapse(false);
+            sel.removeAllRanges();
+            sel.addRange(range);
+        } else {
+            inputElement.textContent = contextText;
+        }
     }
 
     // Trigger input events
@@ -772,7 +776,6 @@ function injectContextIntoAI() {
     // Focus the input
     inputElement.focus();
 
-    ('✅ Context injected into chat input');
     showContextNotification(window.__SABKI_SOCH_CONTEXT__.length, 'Context loaded - click send to send');
 }
 
@@ -840,7 +843,6 @@ function findSendButton() {
         try {
             const button = document.querySelector(selector);
             if (button && isVisible(button)) {
-                (`✅ Found send button with selector: ${selector}`);
                 return button;
             }
         } catch (e) {
@@ -857,14 +859,12 @@ function findSendButton() {
             const buttons = parent.querySelectorAll('button');
             for (const button of buttons) {
                 if (isVisible(button) && button.textContent.toLowerCase().includes('send')) {
-                    ('✅ Found send button by text content');
                     return button;
                 }
             }
         }
     }
 
-    ('❌ No send button found');
     return null;
 }
 
@@ -882,28 +882,18 @@ function isVisible(element) {
 
 // Auto-restore context from localStorage on page load
 function restoreContextFromStorage() {
-    ('🔄 Attempting to restore context from storage...');
 
     // Check if context was previously injected (using localStorage flag)
     const wasInjected = localStorage.getItem('__SABKI_SOCH_CONTEXT_INJECTED__') === 'true';
     const injectedTimestamp = localStorage.getItem('__SABKI_SOCH_CONTEXT_TIMESTAMP__');
 
-    ('📊 Storage flags:', {
-        wasInjected,
-        injectedTimestamp,
-        hasContextInMemory: !!window.__SABKI_SOCH_CONTEXT__,
-        contextInjectedFlag: !!window.__AI_CONTEXT_INJECTED__
-    });
-
     // Don't restore if context is already injected in current session
     if (window.__AI_CONTEXT_INJECTED__) {
-        ('🔄 Context already injected in current session, skipping restore');
         return true;
     }
 
     // Don't restore if context already exists in memory
     if (window.__SABKI_SOCH_CONTEXT__ && window.__SABKI_SOCH_CONTEXT__.length > 0) {
-        ('🔄 Context already exists in memory, skipping restore');
         window.__AI_CONTEXT_INJECTED__ = true;
         return true;
     }
@@ -913,14 +903,13 @@ function restoreContextFromStorage() {
         if (storedContext && wasInjected) {
             window.__SABKI_SOCH_CONTEXT__ = JSON.parse(storedContext);
             window.__AI_CONTEXT_INJECTED__ = true;
-            ('🔄 Context restored from storage:', window.__SABKI_SOCH_CONTEXT__.length, 'items');
+
             return true;
         } else if (storedContext && !wasInjected) {
-            ('⚠️ Found stored context but injection flag is missing - clearing stale data');
             localStorage.removeItem('__SABKI_SOCH_AI_CONTEXT__');
         }
     } catch (e) {
-        ('⚠️ Could not restore context from storage:', e);
+        console.error('⚠️ Could not restore context from storage:', e);
     }
     return false;
 }
@@ -930,7 +919,6 @@ function getOrCreateUserId() {
     return new Promise(resolve => {
         // Return cached ID if available
         if (cachedUserId) {
-            ('🆔 Using cached user ID:', cachedUserId);
             return resolve(cachedUserId);
         }
 
@@ -938,12 +926,10 @@ function getOrCreateUserId() {
             chrome.storage.local.get(['ai_mem_user_id'], (res) => {
                 if (res.ai_mem_user_id) {
                     cachedUserId = res.ai_mem_user_id;
-                    ('🆔 Retrieved existing user ID:', cachedUserId);
                     return resolve(cachedUserId);
                 }
 
                 const id = crypto.randomUUID();
-                ('🆔 Creating new user ID:', id);
                 chrome.storage.local.set({ ai_mem_user_id: id }, () => {
                     cachedUserId = id;
                     resolve(id);
@@ -951,7 +937,6 @@ function getOrCreateUserId() {
             });
         } catch (e) {
             // Fallback to generating a new ID if chrome storage is unavailable
-            ('⚠️ Chrome storage unavailable, generating new ID');
             const id = crypto.randomUUID();
             cachedUserId = id;
             resolve(id);

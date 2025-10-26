@@ -110,10 +110,10 @@ async def store(req: StoreRequest):
         # Validate text content
         if not req.text or not req.text.strip():
             raise HTTPException(status_code=422, detail="Text content cannot be empty")
-    
-    # Generate embedding using Gemini
-    embedding = gemini_ef([req.text])[0]
-    
+        
+        # Generate embedding using Gemini
+        embedding = gemini_ef([req.text])[0]
+        
         # Create unique ID
         uid = str(uuid.uuid4())
         
@@ -125,19 +125,19 @@ async def store(req: StoreRequest):
         }
         
         # Add to chroma collection with pre-computed embedding
-    collection.add(
-        documents=[req.text],
-        metadatas=[metadata],
-        ids=[uid],
-        embeddings=[embedding]
-    )
+        collection.add(
+            documents=[req.text],
+            metadatas=[metadata],
+            ids=[uid],
+            embeddings=[embedding]
+        )
         
-    return {"ok": True, "id": uid}
+        return {"ok": True, "id": uid}
         
     except HTTPException:
         raise
     except Exception as e:
-        (f"Error storing data: {str(e)}")
+        print(f"Error storing data: {str(e)}")
         raise HTTPException(status_code=500, detail=f"Failed to store data: {str(e)}")
 
 @app.get("/get_all")
@@ -202,7 +202,6 @@ async def search_context(request: SearchRequest):
         query = request.query.strip()
         limit = min(request.limit or 5, 10)  # Max 10 results
         
-        (f"🔍 Semantic search for user_id: {user_id}, query: {query[:50]}...")
         
         # Perform semantic search using ChromaDB query
         try:
@@ -211,13 +210,12 @@ async def search_context(request: SearchRequest):
                 n_results=limit,
                 where={"user_id": user_id}
             )
-            (f"🔍 Found {len(results.get('ids', [[]])[0])} relevant results")
+            
         except Exception as query_error:
-            (f"ChromaDB query error: {query_error}")
             return {"items": [], "count": 0, "query": query}
         
         # Format results
-    docs = []
+        docs = []
         documents = results.get("documents", [[]])[0]
         metadatas = results.get("metadatas", [[]])[0]
         ids = results.get("ids", [[]])[0]
@@ -231,11 +229,9 @@ async def search_context(request: SearchRequest):
                 "similarity": 1 - distance  # Convert distance to similarity
             })
         
-        (f"🔍 Returning {len(docs)} relevant items")
         return {"items": docs, "count": len(docs), "query": query}
         
     except Exception as e:
-        (f"Error searching context: {e}")
         raise HTTPException(status_code=500, detail=f"Error searching context: {str(e)}")
 
 @app.get("/health")
@@ -264,15 +260,15 @@ async def clear_all_data():
         try:
             all_docs = collection.get()
             doc_count = len(all_docs.get('ids', []))
-            (f"📊 Found {doc_count} documents to delete")
+            
         except Exception as e:
-            (f"⚠️ Could not count existing documents: {e}")
+            
             doc_count = 0
         
         # Delete all documents
         if doc_count > 0:
             collection.delete()
-            (f"✅ Successfully deleted {doc_count} documents")
+            
         else:
             ("ℹ️ No documents found to delete")
         
@@ -283,7 +279,7 @@ async def clear_all_data():
         }
         
     except Exception as e:
-        (f"❌ Error clearing data: {e}")
+        
         raise HTTPException(status_code=500, detail=f"Error clearing data: {str(e)}")
 
 @app.delete("/clear/{user_id}")
@@ -294,23 +290,20 @@ async def clear_user_data(user_id: str):
             raise HTTPException(status_code=400, detail="user_id is required")
         
         user_id = user_id.strip()
-        (f"🗑️ Clearing data for user: {user_id}")
         
         # Get user's documents first
         try:
             user_docs = collection.get(where={"user_id": user_id})
             doc_count = len(user_docs.get('ids', []))
-            (f"📊 Found {doc_count} documents for user {user_id}")
+            
         except Exception as e:
-            (f"⚠️ Could not count user documents: {e}")
+            
             doc_count = 0
         
         # Delete user's documents
         if doc_count > 0:
             collection.delete(where={"user_id": user_id})
-            (f"✅ Successfully deleted {doc_count} documents for user {user_id}")
-        else:
-            (f"ℹ️ No documents found for user {user_id}")
+            
         
         return {
             "ok": True, 
@@ -320,7 +313,7 @@ async def clear_user_data(user_id: str):
         }
         
     except Exception as e:
-        (f"❌ Error clearing user data: {e}")
+        
         raise HTTPException(status_code=500, detail=f"Error clearing user data: {str(e)}")
 
 class ContextRequest(BaseModel):
@@ -337,7 +330,6 @@ async def generate_context(request: ContextRequest):
         user_id = request.user_id.strip()
         max_length = min(request.max_length or 2000, 5000)  # Cap at 5KB
         
-        (f"🧠 Generating context for user_id: {user_id}")
         
         # Get all conversations for the user
         try:
@@ -346,17 +338,14 @@ async def generate_context(request: ContextRequest):
             metadatas = results.get("metadatas", [])
             
             if not documents:
-                ("ℹ️ No conversations found for user")
                 return {
                     "context": "",
                     "summary": "No previous conversations found",
                     "conversation_count": 0
                 }
             
-            (f"📚 Found {len(documents)} conversations to process")
             
         except Exception as e:
-            (f"❌ Error retrieving conversations: {e}")
             raise HTTPException(status_code=500, detail=f"Error retrieving conversations: {str(e)}")
         
         # Prepare conversation data for Gemini
@@ -390,8 +379,6 @@ Generate a context summary:"""
             response = model.generate_content(prompt)
             generated_context = response.text.strip()
             
-            (f"✅ Generated context ({len(generated_context)} chars): {generated_context[:100]}...")
-            (f"✅ Generated context: {generated_context}")
             return {
                 "context": generated_context,
                 "summary": f"Generated intelligent context from {len(documents)} conversations",
@@ -400,7 +387,6 @@ Generate a context summary:"""
             }
             
         except Exception as e:
-            (f"❌ Error generating context with Gemini: {e}")
             # Fallback to simple concatenation if Gemini fails
             fallback_context = f"Previous conversations ({len(documents)} total):\n\n" + conversations_text[:max_length]
             return {
@@ -414,7 +400,6 @@ Generate a context summary:"""
     except HTTPException:
         raise
     except Exception as e:
-        (f"❌ Error in generate_context: {e}")
         raise HTTPException(status_code=500, detail=f"Error generating context: {str(e)}")
 
 @app.get("/")

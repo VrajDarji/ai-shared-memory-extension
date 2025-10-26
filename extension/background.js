@@ -1,6 +1,5 @@
 chrome.runtime.onMessage.addListener(async (msg, sender, sendResponse) => {
     if (msg.action === 'page_api_data') {
-        console.log('page_api_data received', msg.payload);
         // optionally forward to backend directly from background
         // fetch('http://localhost:8000/store', { ... })
 

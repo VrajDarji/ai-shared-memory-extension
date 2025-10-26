@@ -4,12 +4,9 @@
 
     // Prevent multiple injections
     if (window.__SABKI_SOCH_UI_LOADED__) {
-        ('⚠️ SabkiSoch UI already loaded, skipping...');
         return;
     }
     window.__SABKI_SOCH_UI_LOADED__ = true;
-
-    ('🎨 Loading SabkiSoch UI components...');
 
     // Create floating button
     const createFloatingButton = () => {
@@ -59,7 +56,6 @@
         });
 
         document.body.appendChild(button);
-        ('✅ Floating button created');
         return button;
     };
 
@@ -315,7 +311,6 @@
         // Connect button actions
         connectButtonActions();
 
-        ('✅ Modal created');
         return overlay;
     };
 
@@ -335,14 +330,12 @@
                 overlay.style.opacity = '1';
                 modal.style.transform = 'scale(1)';
             }, 10);
-            ('✅ Modal opened');
         } else {
             overlay.style.opacity = '0';
             modal.style.transform = 'scale(0.9)';
             setTimeout(() => {
                 overlay.style.display = 'none';
             }, 300);
-            ('✅ Modal closed');
         }
     };
 
@@ -509,7 +502,6 @@
         try {
             createFloatingButton();
             createModal();
-            ('✅ SabkiSoch UI components initialized');
         } catch (error) {
             console.error('❌ Failed to initialize UI:', error);
         }
@@ -520,7 +512,6 @@
         if (e.ctrlKey && e.shiftKey && e.key === 'S') {
             e.preventDefault();
             toggleModal();
-            ('⌨️ Keyboard shortcut triggered');
         }
     });
 
