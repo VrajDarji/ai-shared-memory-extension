@@ -108,9 +108,46 @@ window.addEventListener('message', async (event) => {
     }
 });
 
-// Listen for messages from component.js (floating UI)
+// Central message bus for all UI components
 window.addEventListener('message', async (event) => {
-    if (!event.data || event.data.type !== 'SABKI_SOCH_ACTION') return;
+    if (!event.data) return;
+
+    // Handle user ID requests
+    if (event.data.type === 'SABKI_SOCH_GET_USER_ID') {
+        const userId = await getOrCreateUserId();
+        window.postMessage({
+            type: 'SABKI_SOCH_USER_ID_RESPONSE',
+            userId: userId
+        }, '*');
+        return;
+    }
+
+    // Handle context list requests
+    if (event.data.type === 'SABKI_SOCH_GET_CONTEXTS') {
+        try {
+            const userId = await getOrCreateUserId();
+            const response = await fetch(`${BACKEND_URL}/get_all?user_id=${encodeURIComponent(userId)}`, {
+                method: 'GET',
+                headers: { 'Content-Type': 'application/json' },
+            });
+            const data = await response.json();
+
+            window.postMessage({
+                type: 'SABKI_SOCH_CONTEXTS_RESPONSE',
+                success: true,
+                contexts: data.items || []
+            }, '*');
+        } catch (error) {
+            window.postMessage({
+                type: 'SABKI_SOCH_CONTEXTS_RESPONSE',
+                success: false,
+                error: error.message
+            }, '*');
+        }
+        return;
+    }
+
+    if (event.data.type !== 'SABKI_SOCH_ACTION') return;
 
 
     try {
@@ -195,20 +232,17 @@ window.addEventListener('message', async (event) => {
                 message: `Intelligent context generated and sent from ${data.conversation_count} conversations!`
             }, '*');
 
-        } else if (event.data.action === 'inject_context') {
-            // Handle inject context action
-            if (!window.__SABKI_SOCH_CONTEXT__) {
-                // Generate context first
-                const userId = await getOrCreateUserId();
-                const result = await fetch(`${BACKEND_URL}/generate_context`, {
-                    method: 'POST',
+        } else if (event.data.action === 'load_context_by_id') {
+            // Handle load context by ID action
+            const contextId = event.data.context_id;
+            const userId = await getOrCreateUserId();
+
+            try {
+                const result = await fetch(`${BACKEND_URL}/generate_context/${contextId}?user_id=${encodeURIComponent(userId)}&max_length=2000`, {
+                    method: 'GET',
                     headers: {
                         'Content-Type': 'application/json',
                     },
-                    body: JSON.stringify({
-                        user_id: userId,
-                        max_length: 2000
-                    }),
                     credentials: 'omit',
                 });
 
@@ -219,27 +253,45 @@ window.addEventListener('message', async (event) => {
                         metadata: {
                             source: 'generated',
                             summary: data.summary,
-                            conversation_count: data.conversation_count,
+                            context_id: data.context_id,
+                            title: data.title,
                             context_length: data.context_length
                         }
                     }];
-                }
-            }
 
-            if (window.__SABKI_SOCH_CONTEXT__) {
-                injectContextIntoAI();
+                    // Inject context into AI
+                    injectContextIntoAI();
+
+                    // Auto-send after a short delay
+                    setTimeout(() => {
+                        const sendButton = findSendButton();
+                        if (sendButton) {
+                            sendButton.click();
+                        }
+                    }, 1000);
+
+                    // Send response back to component.js
+                    window.postMessage({
+                        type: 'SABKI_SOCH_RESPONSE',
+                        action: 'load_context_by_id',
+                        success: true,
+                        message: 'Context loaded and sent successfully!'
+                    }, '*');
+                } else {
+                    window.postMessage({
+                        type: 'SABKI_SOCH_RESPONSE',
+                        action: 'load_context_by_id',
+                        success: false,
+                        message: 'No context generated'
+                    }, '*');
+                }
+            } catch (error) {
+                console.error('Error loading context by ID:', error);
                 window.postMessage({
                     type: 'SABKI_SOCH_RESPONSE',
-                    action: 'inject_context',
-                    success: true,
-                    message: 'Context injected into chat input!'
-                }, '*');
-            } else {
-                window.postMessage({
-                    type: 'SABKI_SOCH_RESPONSE',
-                    action: 'inject_context',
+                    action: 'load_context_by_id',
                     success: false,
-                    message: 'No context available to inject'
+                    message: error.message
                 }, '*');
             }
 
@@ -462,6 +514,29 @@ async function storeToBackend(payload) {
 // Listen for messages from the popup
 chrome.runtime.onMessage.addListener(async (request, sender, sendResponse) => {
 
+    // Handle context list requests from popup
+    if (request.type === 'SABKI_SOCH_GET_CONTEXTS') {
+        try {
+            const userId = await getOrCreateUserId();
+            const response = await fetch(`${BACKEND_URL}/get_all?user_id=${encodeURIComponent(userId)}`, {
+                method: 'GET',
+                headers: { 'Content-Type': 'application/json' },
+            });
+            const data = await response.json();
+
+            sendResponse({
+                success: true,
+                contexts: data.items || []
+            });
+        } catch (error) {
+            sendResponse({
+                success: false,
+                error: error.message
+            });
+        }
+        return true;
+    }
+
     if (request.action === 'store_context') {
         // Respond immediately to prevent port closure
         sendResponse({ ok: true, message: 'Processing...' });
@@ -550,6 +625,50 @@ chrome.runtime.onMessage.addListener(async (request, sender, sendResponse) => {
             } catch (error) {
                 console.error('❌ Context generation failed:', error);
                 showContextNotification(0, 'Failed to generate context');
+            }
+        })();
+
+        return true;
+    }
+
+    if (request.action === 'load_context_by_id') {
+        // Respond immediately
+        sendResponse({ ok: true, message: 'Loading context...' });
+
+        // Process asynchronously
+        (async () => {
+            try {
+                const contextId = request.context_id;
+                const userId = request.user_id || await getOrCreateUserId();
+
+                const result = await fetch(`${BACKEND_URL}/generate_context/${contextId}?user_id=${encodeURIComponent(userId)}&max_length=2000`, {
+                    method: 'GET',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    credentials: 'omit',
+                });
+
+                const data = await result.json();
+
+                if (data && data.context && data.context.length > 0) {
+                    window.__SABKI_SOCH_CONTEXT__ = [{
+                        text: data.context,
+                        metadata: {
+                            source: 'generated',
+                            summary: data.summary,
+                            context_id: data.context_id,
+                            title: data.title,
+                            context_length: data.context_length
+                        }
+                    }];
+
+                    injectContextIntoAI();
+                } else {
+                    console.error('❌ No context generated');
+                }
+            } catch (error) {
+                console.error('❌ Context loading failed:', error);
             }
         })();
 
@@ -776,7 +895,7 @@ function injectContextIntoAI() {
     // Focus the input
     inputElement.focus();
 
-    showContextNotification(window.__SABKI_SOCH_CONTEXT__.length, 'Context loaded - click send to send');
+    showContextNotification(window.__SABKI_SOCH_CONTEXT__.length, 'Context loaded - will auto-send in 1 second');
 }
 
 // Removed complex auto injection setup - using simple approach

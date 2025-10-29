@@ -189,6 +189,164 @@
       align-items: center;
       justify-content: center;
     }
+    
+    /* Context Selection Modal */
+    .context-modal-overlay {
+      display: none;
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: rgba(0, 0, 0, 0.4);
+      backdrop-filter: blur(4px);
+      z-index: 10000;
+      align-items: center;
+      justify-content: center;
+      opacity: 0;
+      transition: opacity 0.3s ease;
+    }
+    
+    .context-modal-overlay.show {
+      display: flex;
+      opacity: 1;
+    }
+    
+    .context-modal {
+      width: 420px;
+      max-height: 80vh;
+      background: rgba(255, 255, 255, 0.95);
+      backdrop-filter: blur(10px);
+      border-radius: 16px;
+      box-shadow: 0 8px 32px rgba(0, 0, 0, 0.08);
+      transform: scale(0.9);
+      transition: transform 0.3s ease;
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+    }
+    
+    .context-modal.show {
+      transform: scale(1);
+    }
+    
+    .context-modal-header {
+      padding: 20px 24px;
+      border-bottom: 1px solid #f0f0f0;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    
+    .context-modal-header h2 {
+      font-size: 18px;
+      font-weight: 600;
+      color: #1a1a1a;
+      margin: 0;
+    }
+    
+    .context-modal-close {
+      background: none;
+      border: none;
+      font-size: 24px;
+      cursor: pointer;
+      color: #666;
+      padding: 0;
+      width: 28px;
+      height: 28px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      border-radius: 6px;
+      transition: all 0.2s ease;
+    }
+    
+    .context-modal-close:hover {
+      background: #f0f0f0;
+      color: #1a1a1a;
+    }
+    
+    .context-modal-body {
+      padding: 16px;
+      overflow-y: auto;
+      flex: 1;
+    }
+    
+    .context-list {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+    
+    .context-item {
+      padding: 14px 16px;
+      border: 1.5px solid #e5e5e5;
+      border-radius: 12px;
+      cursor: pointer;
+      transition: all 0.2s ease;
+      background: rgba(255, 255, 255, 0.8);
+    }
+    
+    .context-item:hover {
+      border-color: #d0d0d0;
+      background: rgba(249, 249, 249, 0.95);
+      transform: translateY(-1px);
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+    }
+    
+    .context-item-title {
+      font-size: 14px;
+      font-weight: 500;
+      color: #1a1a1a;
+      margin-bottom: 6px;
+    }
+    
+    .context-item-time {
+      font-size: 12px;
+      color: #666;
+    }
+    
+    .context-item.loading {
+      pointer-events: none;
+      opacity: 0.6;
+    }
+    
+    .context-empty {
+      text-align: center;
+      padding: 40px 20px;
+      color: #666;
+      font-size: 14px;
+    }
+    
+    .context-loading {
+      text-align: center;
+      padding: 40px 20px;
+      color: #666;
+      font-size: 14px;
+    }
+    
+    .limit-info {
+      background: rgba(240, 248, 255, 0.8);
+      backdrop-filter: blur(10px);
+      border: 1px solid #dbeafe;
+      border-radius: 12px;
+      padding: 16px;
+      margin: 16px 0;
+      font-size: 12px;
+      color: #1e40af;
+    }
+    
+    .limit-info p {
+      margin: 0 0 6px 0;
+      font-weight: 500;
+    }
+    
+    .limit-info p:last-child {
+      margin-bottom: 0;
+      font-size: 11px;
+      color: #64748b;
+      font-style: italic;
+    }
   </style>
 </head>
 <body>
@@ -202,9 +360,6 @@
       <button id="storeBtn">
         <span>Store Current Chat</span>
       </button>
-      <button id="loadBtn">
-        <span>Generate & Send Context</span>
-      </button>
       <button id="injectBtn">
         <span>Load Context to Chat</span>
       </button>
@@ -217,14 +372,33 @@
       <p><strong>How to use:</strong></p>
       <ol>
         <li><strong>Store</strong> conversations to save them</li>
-        <li><strong>Generate & Send Context</strong> to create intelligent context summary and send to AI</li>
-        <li><strong>Load Context to Chat</strong> to inject context into chat input (manual send)</li>
+        <li><strong>Load Context to Chat</strong> to select and load a specific context into chat</li>
       </ol>
     </div>
     
+    <div id="limit-info" class="limit-info">
+      <p>Payload size limit: 36KB (36,000 bytes)</p>
+      <p>Text field limit: 30,000 characters</p>
+      <p>Payload size estimation: 200 bytes + user_id + source + text + url</p>
+    </div>
+
     <div id="status" class="status"></div>
     
-   
+  </div>
+
+  <!-- Context Selection Modal -->
+  <div id="contextModalOverlay" class="context-modal-overlay">
+    <div id="contextModal" class="context-modal">
+      <div class="context-modal-header">
+        <h2>Select Context to Load</h2>
+        <button class="context-modal-close" id="contextModalClose">&times;</button>
+      </div>
+      <div class="context-modal-body">
+        <div id="contextListContainer">
+          <div class="context-loading">Loading contexts...</div>
+        </div>
+      </div>
+    </div>
   </div>
 
   <script src="popup.js"></script>

@@ -129,155 +129,196 @@ document.getElementById('storeBtn').addEventListener('click', async () => {
     });
 })
 
-document.getElementById('loadBtn').addEventListener('click', async () => {
-    const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
-    if (!tab) return;
+// Context selection modal functions
+async function openContextSelectionModal() {
+    const overlay = document.getElementById('contextModalOverlay');
+    const modal = document.getElementById('contextModal');
+    const container = document.getElementById('contextListContainer');
+
+    // Show modal
+    overlay.classList.add('show');
+    modal.classList.add('show');
 
     // Show loading state
-    const loadBtn = document.getElementById('loadBtn');
-    const status = document.getElementById('status');
+    container.innerHTML = '<div class="context-loading">Loading contexts...</div>';
 
-    setButtonLoading(loadBtn, true, 'Generating...');
+    try {
+        // Get user ID
+        const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
+        if (!tab) return;
 
-    ('📤 Sending load message to tab:', tab.id);
-
-    // First try to inject content script if it's not loaded
-    chrome.scripting.executeScript({
-        target: { tabId: tab.id },
-        files: ['content.js']
-    }).then(() => {
-        ('✅ Content script injected for load');
-        // Wait a moment for content script to fully load, then send message
-        setTimeout(() => {
-            chrome.tabs.sendMessage(tab.id, { action: "load_context" }, (resp) => {
-                // Check for runtime errors
+        // Request contexts from content script
+        const contexts = await new Promise((resolve) => {
+            chrome.tabs.sendMessage(tab.id, { type: 'SABKI_SOCH_GET_CONTEXTS' }, (response) => {
                 if (chrome.runtime.lastError) {
-                    console.error('❌ Runtime error:', chrome.runtime.lastError.message);
-                    setButtonError(loadBtn, '❌ Failed');
-                    status.textContent = 'Content script not responding. Try refreshing the page.';
-                    status.className = 'status error';
-                    status.style.display = 'block';
-                    return;
-                }
-
-                ("📥 Load response received:", resp);
-
-                // Show feedback based on response
-                if (resp && resp.ok) {
-                    setButtonSuccess(loadBtn, '✅ Generated!');
-                    status.textContent = `Intelligent context generated and sent!`;
-                    status.className = 'status success';
-                    status.style.display = 'block';
-
-                    // Close popup after success
-                    closePopup(2000);
+                    resolve({ success: false, error: chrome.runtime.lastError.message });
                 } else {
-                    setButtonError(loadBtn, '❌ Failed');
-                    status.textContent = 'Failed to generate context. Check console for details.';
-                    status.className = 'status error';
-                    status.style.display = 'block';
+                    resolve(response || { success: false, error: 'No response' });
                 }
-
-                // Hide status after delay
-                setTimeout(() => {
-                    status.style.display = 'none';
-                }, 3000);
             });
-        }, 500); // Wait 500ms for content script to initialize
-    }).catch((error) => {
-        console.error('❌ Failed to inject content script for load:', error);
-        setButtonError(loadBtn, '❌ Failed');
-        status.textContent = 'Cannot inject content script on this page.';
-        status.className = 'status error';
-        status.style.display = 'block';
+        });
 
-        setTimeout(() => {
-            status.style.display = 'none';
-        }, 3000);
+        if (!contexts.success) {
+            container.innerHTML = '<div class="context-empty">Failed to load contexts. Please try again.</div>';
+            return;
+        }
+
+        if (!contexts.contexts || contexts.contexts.length === 0) {
+            container.innerHTML = '<div class="context-empty">No stored contexts found. Store a conversation first!</div>';
+            return;
+        }
+
+        // Display contexts
+        displayContexts(contexts.contexts, tab.id);
+
+    } catch (error) {
+        console.error('Error loading contexts:', error);
+        container.innerHTML = '<div class="context-empty">Failed to load contexts. Please try again.</div>';
+    }
+}
+
+function displayContexts(contexts, tabId) {
+    const container = document.getElementById('contextListContainer');
+
+    // Sort by time (newest first)
+    contexts.sort((a, b) => {
+        const timeA = new Date(a.metadata?.time || 0);
+        const timeB = new Date(b.metadata?.time || 0);
+        return timeB - timeA;
     });
-})
+
+    const list = document.createElement('div');
+    list.className = 'context-list';
+
+    contexts.forEach((context) => {
+        const item = document.createElement('div');
+        item.className = 'context-item';
+
+        const title = document.createElement('div');
+        title.className = 'context-item-title';
+        title.textContent = context.metadata?.title || 'Untitled Conversation';
+
+        const time = document.createElement('div');
+        time.className = 'context-item-time';
+        const timeStr = context.metadata?.time || '';
+        if (timeStr) {
+            try {
+                const date = new Date(timeStr);
+                time.textContent = date.toLocaleString();
+            } catch (e) {
+                time.textContent = timeStr;
+            }
+        } else {
+            time.textContent = 'Unknown time';
+        }
+
+        item.appendChild(title);
+        item.appendChild(time);
+
+        item.addEventListener('click', async () => {
+            await loadContextById(context.id, tabId, item);
+        });
+
+        list.appendChild(item);
+    });
+
+    container.innerHTML = '';
+    container.appendChild(list);
+}
+
+async function loadContextById(contextId, tabId, itemElement) {
+    itemElement.classList.add('loading');
+
+    try {
+        // Get user ID
+        const userId = await new Promise((resolve) => {
+            chrome.storage.local.get(['ai_mem_user_id'], (res) => {
+                resolve(res.ai_mem_user_id || null);
+            });
+        });
+
+        if (!userId) {
+            throw new Error('No user ID found');
+        }
+
+        // Inject content script
+        await chrome.scripting.executeScript({
+            target: { tabId: tabId },
+            files: ['content.js']
+        });
+
+        // Wait for content script to load
+        await new Promise(resolve => setTimeout(resolve, 500));
+
+        // Send message to content script to load specific context
+        chrome.tabs.sendMessage(tabId, {
+            action: "load_context_by_id",
+            context_id: contextId,
+            user_id: userId
+        }, (resp) => {
+            if (chrome.runtime.lastError) {
+                console.error('❌ Runtime error:', chrome.runtime.lastError.message);
+                showContextError('Failed to load context. Please refresh the page.');
+                itemElement.classList.remove('loading');
+                return;
+            }
+
+            if (resp && resp.ok) {
+                // Close modal and show success
+                closeContextSelectionModal();
+                const status = document.getElementById('status');
+                status.textContent = 'Context loaded successfully!';
+                status.className = 'status success';
+                status.style.display = 'block';
+                closePopup(2000);
+            } else {
+                showContextError(resp?.error || 'Failed to load context');
+                itemElement.classList.remove('loading');
+            }
+        });
+
+    } catch (error) {
+        console.error('Error loading context:', error);
+        showContextError('Failed to load context: ' + error.message);
+        itemElement.classList.remove('loading');
+    }
+}
+
+function closeContextSelectionModal() {
+    const overlay = document.getElementById('contextModalOverlay');
+    const modal = document.getElementById('contextModal');
+    overlay.classList.remove('show');
+    modal.classList.remove('show');
+}
+
+function showContextError(message) {
+    const container = document.getElementById('contextListContainer');
+    const errorDiv = document.createElement('div');
+    errorDiv.className = 'context-empty';
+    errorDiv.textContent = message;
+    container.appendChild(errorDiv);
+    setTimeout(() => {
+        errorDiv.remove();
+    }, 3000);
+}
+
+// Close modal handlers
+document.getElementById('contextModalClose').addEventListener('click', closeContextSelectionModal);
+document.getElementById('contextModalOverlay').addEventListener('click', (e) => {
+    if (e.target.id === 'contextModalOverlay') {
+        closeContextSelectionModal();
+    }
+});
 
 document.getElementById('injectBtn').addEventListener('click', async () => {
-    ('🔘 Inject button clicked');
-
     const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
-    ('📑 Active tab:', tab);
-
     if (!tab) {
         console.error('❌ No active tab found');
         return;
     }
 
-    // Show loading state
-    const injectBtn = document.getElementById('injectBtn');
-    const status = document.getElementById('status');
-
-    setButtonLoading(injectBtn, true, 'Injecting...');
-
-    ('📤 Sending inject message to tab:', tab.id);
-
-    // First try to inject content script if it's not loaded
-    chrome.scripting.executeScript({
-        target: { tabId: tab.id },
-        files: ['content.js']
-    }).then(() => {
-        ('✅ Content script injected for context injection');
-        // Wait a moment for content script to fully load, then send message
-        setTimeout(() => {
-            chrome.tabs.sendMessage(tab.id, { action: "inject_context" }, (resp) => {
-                // Check for runtime errors
-                if (chrome.runtime.lastError) {
-                    console.error('❌ Runtime error:', chrome.runtime.lastError.message);
-                    setButtonError(injectBtn, '❌ Failed');
-                    status.textContent = 'Content script not responding. Try refreshing the page.';
-                    status.className = 'status error';
-                    status.style.display = 'block';
-                    return;
-                }
-
-                ("📥 Inject response received:", resp);
-
-                // Show feedback based on response
-                if (resp && resp.ok) {
-                    setButtonSuccess(injectBtn, '✅ Injected!');
-                    status.textContent = 'Context injected into AI system. AI can now reference your stored conversations.';
-                    status.className = 'status success';
-                    status.style.display = 'block';
-
-                    // Close popup after success
-                    closePopup(2000);
-                } else {
-                    setButtonError(injectBtn, '❌ Failed');
-                    if (resp && resp.error) {
-                        status.textContent = `Failed: ${resp.error}`;
-                    } else {
-                        status.textContent = 'Failed to inject context. Make sure backend is running.';
-                    }
-                    status.className = 'status error';
-                    status.style.display = 'block';
-                }
-
-                // Reset button after 3 seconds
-                setTimeout(() => {
-                    injectBtn.querySelector('span').textContent = originalText;
-                    injectBtn.disabled = false;
-                    status.style.display = 'none';
-                }, 3000);
-            });
-        }, 500); // Wait 500ms for content script to initialize
-    }).catch((error) => {
-        console.error('❌ Failed to inject content script for context injection:', error);
-        injectBtn.querySelector('span').textContent = '❌ Failed';
-        status.textContent = 'Cannot inject content script on this page.';
-        status.className = 'status error';
-        status.style.display = 'block';
-
-        setTimeout(() => {
-            injectBtn.querySelector('span').textContent = originalText;
-            injectBtn.disabled = false;
-            status.style.display = 'none';
-        }, 3000);
-    });
+    // Open context selection modal
+    openContextSelectionModal();
 });
 
 // Clear button handler

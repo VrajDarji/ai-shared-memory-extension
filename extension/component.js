@@ -146,7 +146,6 @@
         // Create buttons
         const buttons = [
             { id: 'sabkisoch-store-btn', text: 'Store Current Chat', isDanger: false },
-            { id: 'sabkisoch-load-btn', text: 'Generate & Send Context', isDanger: false },
             { id: 'sabkisoch-inject-btn', text: 'Load Context to Chat', isDanger: false },
             { id: 'sabkisoch-clear-btn', text: 'Clear My Data', isDanger: true }
         ];
@@ -155,6 +154,7 @@
             const button = document.createElement('button');
             button.id = btnData.id;
             button.textContent = btnData.text;
+            button.dataset.originalText = btnData.text; // Store original text for restoration
 
             Object.assign(button.style, {
                 width: '100%',
@@ -208,8 +208,7 @@
 
         const helpItems = [
             { strong: 'Store', text: ' conversations to save them' },
-            { strong: 'Generate & Send Context', text: ' to create intelligent context summary and send to AI' },
-            { strong: 'Load Context to Chat', text: ' to inject context into chat input (manual send)' }
+            { strong: 'Load Context to Chat', text: ' to select and load a specific context into chat' }
         ];
 
         helpItems.forEach(itemData => {
@@ -230,6 +229,47 @@
 
         helpText.appendChild(helpTitle);
         helpText.appendChild(helpList);
+
+        // Limit info section
+        const limitInfo = document.createElement('div');
+        limitInfo.className = 'limit-info';
+        Object.assign(limitInfo.style, {
+            background: 'rgba(240, 248, 255, 0.8)',
+            backdropFilter: 'blur(10px)',
+            border: '1px solid #dbeafe',
+            borderRadius: '12px',
+            padding: '16px',
+            margin: '16px 0',
+            fontSize: '12px',
+            color: '#1e40af'
+        });
+
+        const limitInfoP1 = document.createElement('p');
+        limitInfoP1.textContent = 'Payload size limit: 36KB (36,000 bytes)';
+        Object.assign(limitInfoP1.style, {
+            margin: '0 0 6px 0',
+            fontWeight: '500'
+        });
+
+        const limitInfoP2 = document.createElement('p');
+        limitInfoP2.textContent = 'Text field limit: 30,000 characters';
+        Object.assign(limitInfoP2.style, {
+            margin: '0 0 6px 0',
+            fontWeight: '500'
+        });
+
+        const limitInfoP3 = document.createElement('p');
+        limitInfoP3.textContent = 'Payload size estimation: 200 bytes + user_id + source + text + url';
+        Object.assign(limitInfoP3.style, {
+            margin: '0',
+            fontSize: '11px',
+            color: '#64748b',
+            fontStyle: 'italic'
+        });
+
+        limitInfo.appendChild(limitInfoP1);
+        limitInfo.appendChild(limitInfoP2);
+        limitInfo.appendChild(limitInfoP3);
 
         // Status div
         const statusDiv = document.createElement('div');
@@ -276,6 +316,7 @@
         modalContent.appendChild(header);
         modalContent.appendChild(buttonContainer);
         modalContent.appendChild(helpText);
+        modalContent.appendChild(limitInfo);
         modalContent.appendChild(statusDiv);
         modalContent.appendChild(footer);
 
@@ -350,20 +391,8 @@
             }, '*');
         });
 
-        document.getElementById('sabkisoch-load-btn').addEventListener('click', () => {
-            setButtonLoading('sabkisoch-load-btn', 'Generating...');
-            window.postMessage({
-                type: 'SABKI_SOCH_ACTION',
-                action: 'load_context'
-            }, '*');
-        });
-
         document.getElementById('sabkisoch-inject-btn').addEventListener('click', () => {
-            setButtonLoading('sabkisoch-inject-btn', 'Loading...');
-            window.postMessage({
-                type: 'SABKI_SOCH_ACTION',
-                action: 'inject_context'
-            }, '*');
+            openContextSelectionModal();
         });
 
         document.getElementById('sabkisoch-clear-btn').addEventListener('click', () => {
@@ -443,21 +472,36 @@
             } else {
                 setButtonError('sabkisoch-store-btn', '❌ Failed');
             }
-        } else if (action === 'load_context') {
-            if (success) {
-                setButtonSuccess('sabkisoch-load-btn', '✅ Sent!');
-                // Auto-close modal on successful load
-                setTimeout(() => {
-                    toggleModal();
-                }, 1500);
-            } else {
-                setButtonError('sabkisoch-load-btn', '❌ Failed');
-            }
         } else if (action === 'inject_context') {
             if (success) {
                 setButtonSuccess('sabkisoch-inject-btn', '✅ Loaded!');
             } else {
                 setButtonError('sabkisoch-inject-btn', '❌ Failed');
+            }
+        } else if (action === 'load_context_by_id') {
+            if (success) {
+                setButtonSuccess('sabkisoch-inject-btn', '✅ Loaded & Sent!');
+                // Close context selection modal
+                closeContextSelectionModal();
+                // Close main modal too
+                toggleModal();
+            } else {
+                setButtonError('sabkisoch-inject-btn', '❌ Failed');
+                // Show error in context modal
+                const contextList = document.getElementById('sabkisoch-context-list-container');
+                if (contextList) {
+                    const errorDiv = document.createElement('div');
+                    errorDiv.textContent = 'Failed to load context. Please try again.';
+                    Object.assign(errorDiv.style, {
+                        textAlign: 'center',
+                        padding: '40px 20px',
+                        color: '#1a1a1a',
+                        fontSize: '14px',
+                        fontWeight: '500'
+                    });
+                    contextList.innerHTML = '';
+                    contextList.appendChild(errorDiv);
+                }
             }
         } else if (action === 'clear_data') {
             if (success) {
@@ -495,6 +539,329 @@
         setTimeout(() => {
             status.style.display = 'none';
         }, 3000);
+    };
+
+    // Context Selection Modal Functions
+    const createContextSelectionModal = () => {
+        const overlay = document.createElement('div');
+        overlay.id = 'sabkisoch-context-modal-overlay';
+
+        Object.assign(overlay.style, {
+            position: 'fixed',
+            top: '0',
+            left: '0',
+            width: '100%',
+            height: '100%',
+            background: 'rgba(0, 0, 0, 0.4)',
+            backdropFilter: 'blur(4px)',
+            display: 'none',
+            alignItems: 'center',
+            justifyContent: 'center',
+            zIndex: '1000001',
+            opacity: '0',
+            transition: 'opacity 0.3s ease',
+            fontFamily: 'system-ui, -apple-system, sans-serif'
+        });
+
+        const modal = document.createElement('div');
+        modal.id = 'sabkisoch-context-modal';
+
+        Object.assign(modal.style, {
+            width: '420px',
+            maxHeight: '80vh',
+            background: 'rgba(255, 255, 255, 0.95)',
+            backdropFilter: 'blur(10px)',
+            borderRadius: '16px',
+            boxShadow: '0 8px 32px rgba(0, 0, 0, 0.08)',
+            transform: 'scale(0.9)',
+            transition: 'transform 0.3s ease',
+            overflow: 'hidden',
+            display: 'flex',
+            flexDirection: 'column'
+        });
+
+        // Header
+        const header = document.createElement('div');
+        Object.assign(header.style, {
+            padding: '20px 24px',
+            borderBottom: '1px solid #f0f0f0',
+            display: 'flex',
+            justifyContent: 'space-between',
+            alignItems: 'center'
+        });
+
+        const title = document.createElement('h2');
+        title.textContent = 'Select Context to Load';
+        Object.assign(title.style, {
+            fontSize: '18px',
+            fontWeight: '600',
+            color: '#1a1a1a',
+            margin: '0'
+        });
+
+        const closeBtn = document.createElement('button');
+        closeBtn.textContent = '×';
+        closeBtn.id = 'sabkisoch-context-modal-close';
+        Object.assign(closeBtn.style, {
+            background: 'none',
+            border: 'none',
+            fontSize: '24px',
+            cursor: 'pointer',
+            color: '#666',
+            padding: '0',
+            width: '28px',
+            height: '28px',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            borderRadius: '6px',
+            transition: 'all 0.2s ease'
+        });
+
+        closeBtn.addEventListener('mouseenter', () => {
+            closeBtn.style.background = '#f0f0f0';
+            closeBtn.style.color = '#1a1a1a';
+        });
+
+        closeBtn.addEventListener('mouseleave', () => {
+            closeBtn.style.background = 'none';
+            closeBtn.style.color = '#666';
+        });
+
+        closeBtn.addEventListener('click', closeContextSelectionModal);
+
+        header.appendChild(title);
+        header.appendChild(closeBtn);
+
+        // Body
+        const body = document.createElement('div');
+        body.id = 'sabkisoch-context-list-container';
+        Object.assign(body.style, {
+            padding: '16px',
+            overflowY: 'auto',
+            flex: '1'
+        });
+
+        modal.appendChild(header);
+        modal.appendChild(body);
+        overlay.appendChild(modal);
+        document.body.appendChild(overlay);
+
+        // Close on overlay click
+        overlay.addEventListener('click', (e) => {
+            if (e.target === overlay) {
+                closeContextSelectionModal();
+            }
+        });
+
+        return overlay;
+    };
+
+    const openContextSelectionModal = async () => {
+        let overlay = document.getElementById('sabkisoch-context-modal-overlay');
+        if (!overlay) {
+            overlay = createContextSelectionModal();
+        }
+
+        const container = document.getElementById('sabkisoch-context-list-container');
+        container.innerHTML = '<div style="text-align: center; padding: 40px 20px; color: #1a1a1a; font-size: 14px; font-weight: 500;">Loading contexts...</div>';
+
+        overlay.style.display = 'flex';
+        setTimeout(() => {
+            overlay.style.opacity = '1';
+            const modal = document.getElementById('sabkisoch-context-modal');
+            if (modal) modal.style.transform = 'scale(1)';
+        }, 10);
+
+        try {
+            // Request contexts from content script
+            const contexts = await new Promise((resolve) => {
+                window.postMessage({
+                    type: 'SABKI_SOCH_GET_CONTEXTS'
+                }, '*');
+
+                const handleResponse = (event) => {
+                    if (event.data && event.data.type === 'SABKI_SOCH_CONTEXTS_RESPONSE') {
+                        window.removeEventListener('message', handleResponse);
+                        resolve(event.data);
+                    }
+                };
+
+                window.addEventListener('message', handleResponse);
+
+                // Timeout after 5 seconds
+                setTimeout(() => {
+                    window.removeEventListener('message', handleResponse);
+                    resolve({ success: false, error: 'Timeout' });
+                }, 5000);
+            });
+
+            if (!contexts.success) {
+                container.innerHTML = '<div style="text-align: center; padding: 40px 20px; color: #1a1a1a; font-size: 14px; font-weight: 500;">Failed to load contexts. Please try again.</div>';
+                return;
+            }
+
+            if (!contexts.contexts || contexts.contexts.length === 0) {
+                container.innerHTML = '<div style="text-align: center; padding: 40px 20px; color: #1a1a1a; font-size: 14px; font-weight: 500;">No stored contexts found. Store a conversation first!</div>';
+                return;
+            }
+
+            displayContextsList(contexts.contexts);
+        } catch (error) {
+            console.error('Error loading contexts:', error);
+            container.innerHTML = '<div style="text-align: center; padding: 40px 20px; color: #1a1a1a; font-size: 14px; font-weight: 500;">Failed to load contexts. Please try again.</div>';
+        }
+    };
+
+    const displayContextsList = (contexts) => {
+        console.log('Displaying contexts:', contexts);
+        const container = document.getElementById('sabkisoch-context-list-container');
+
+        // Sort by time (newest first)
+        contexts.sort((a, b) => {
+            const timeA = new Date(a.metadata?.time || 0);
+            const timeB = new Date(b.metadata?.time || 0);
+            return timeB - timeA;
+        });
+
+        const list = document.createElement('div');
+        Object.assign(list.style, {
+            display: 'flex',
+            flexDirection: 'column',
+            gap: '10px'
+        });
+
+        contexts.forEach((context) => {
+            const item = document.createElement('div');
+            Object.assign(item.style, {
+                padding: '14px 16px',
+                border: '1.5px solid #e5e5e5',
+                borderRadius: '12px',
+                cursor: 'pointer',
+                transition: 'all 0.2s ease',
+                background: 'rgba(255, 255, 255, 0.8)'
+            });
+
+            item.addEventListener('mouseenter', () => {
+                item.style.borderColor = '#d0d0d0';
+                item.style.background = 'rgba(249, 249, 249, 0.95)';
+                item.style.transform = 'translateY(-1px)';
+                item.style.boxShadow = '0 4px 12px rgba(0, 0, 0, 0.08)';
+            });
+
+            item.addEventListener('mouseleave', () => {
+                item.style.borderColor = '#e5e5e5';
+                item.style.background = 'rgba(255, 255, 255, 0.8)';
+                item.style.transform = 'translateY(0)';
+                item.style.boxShadow = 'none';
+            });
+
+            const title = document.createElement('div');
+            title.textContent = context.metadata?.title || 'Untitled Conversation';
+            Object.assign(title.style, {
+                fontSize: '14px',
+                fontWeight: '500',
+                color: '#1a1a1a',
+                marginBottom: '6px'
+            });
+
+            const time = document.createElement('div');
+            const timeStr = context.metadata?.time || '';
+            if (timeStr) {
+                try {
+                    const date = new Date(timeStr);
+                    time.textContent = date.toLocaleString();
+                } catch (e) {
+                    time.textContent = timeStr;
+                }
+            } else {
+                time.textContent = 'Unknown time';
+            }
+            Object.assign(time.style, {
+                fontSize: '12px',
+                color: '#666'
+            });
+
+            item.appendChild(title);
+            item.appendChild(time);
+
+            item.addEventListener('click', () => {
+                console.log('Context clicked:', context);
+                console.log('Context ID:', context.id);
+                loadContextById(context.id);
+            });
+
+            list.appendChild(item);
+        });
+
+        container.innerHTML = '';
+        container.appendChild(list);
+    };
+
+    const loadContextById = async (contextId) => {
+        console.log('Loading context by ID:', contextId);
+        try {
+            // Show loading state
+            const contextList = document.getElementById('sabkisoch-context-list-container');
+            if (contextList) {
+                const loadingDiv = document.createElement('div');
+                loadingDiv.textContent = 'Loading context...';
+                Object.assign(loadingDiv.style, {
+                    textAlign: 'center',
+                    padding: '40px 20px',
+                    color: '#1a1a1a',
+                    fontSize: '14px',
+                    fontWeight: '500'
+                });
+                contextList.innerHTML = '';
+                contextList.appendChild(loadingDiv);
+            }
+
+            // Send message to content script to load specific context
+            console.log('Sending message to content script:', {
+                type: 'SABKI_SOCH_ACTION',
+                action: 'load_context_by_id',
+                context_id: contextId
+            });
+            window.postMessage({
+                type: 'SABKI_SOCH_ACTION',
+                action: 'load_context_by_id',
+                context_id: contextId
+            }, '*');
+
+            // Don't close modal yet - wait for response
+
+        } catch (error) {
+            console.error('Error loading context:', error);
+            // Show error in context modal if it exists
+            const contextList = document.getElementById('sabkisoch-context-list-container');
+            if (contextList) {
+                const errorDiv = document.createElement('div');
+                errorDiv.textContent = 'Error loading context. Please try again.';
+                Object.assign(errorDiv.style, {
+                    textAlign: 'center',
+                    padding: '40px 20px',
+                    color: '#1a1a1a',
+                    fontSize: '14px',
+                    fontWeight: '500'
+                });
+                contextList.innerHTML = '';
+                contextList.appendChild(errorDiv);
+            }
+        }
+    };
+
+    const closeContextSelectionModal = () => {
+        const overlay = document.getElementById('sabkisoch-context-modal-overlay');
+        if (!overlay) return;
+
+        overlay.style.opacity = '0';
+        const modal = document.getElementById('sabkisoch-context-modal');
+        if (modal) modal.style.transform = 'scale(0.9)';
+
+        setTimeout(() => {
+            overlay.style.display = 'none';
+        }, 300);
     };
 
     // Initialize UI components
