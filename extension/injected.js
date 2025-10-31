@@ -3,10 +3,8 @@
         function emit(payload) {
             try {
                 window.postMessage({ from: 'sabki_soch', payload }, '*');
-                // global variable to store the last payload
                 window.__SABKI_SOCH_LAST_API_PAYLOAD__ = payload?.data || payload?.text || null;
             } catch (e) {
-                // Silently ignore extension context errors
                 console.error('⚠️ Extension context unavailable, skipping message');
             }
         }

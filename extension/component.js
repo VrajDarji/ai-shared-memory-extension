@@ -1,20 +1,36 @@
+// Component.js - Main UI component for SabkiSoch extension ( Not refactoring not major core logic just UI )
 
 (function () {
     'use strict';
+    // Can't use constants.js here because it is not available in page context
+    const MESSAGE_TYPES = {
+        GET_USER_ID: 'SABKI_SOCH_GET_USER_ID',
+        GET_CONTEXTS: 'SABKI_SOCH_GET_CONTEXTS',
+        ACTION: 'SABKI_SOCH_ACTION',
+        USER_ID_RESPONSE: 'SABKI_SOCH_USER_ID_RESPONSE',
+        CONTEXTS_RESPONSE: 'SABKI_SOCH_CONTEXTS_RESPONSE',
+        RESPONSE: 'SABKI_SOCH_RESPONSE',
+        FROM_SABKI_SOCH: 'sabki_soch'
+    };
 
-    // Prevent multiple injections
+    const ACTIONS = {
+        STORE_CONTEXT: 'store_context',
+        LOAD_CONTEXT: 'load_context',
+        LOAD_CONTEXT_BY_ID: 'load_context_by_id',
+        CLEAR_DATA: 'clear_data',
+        INJECT_CONTEXT: 'inject_context'
+    };
+
     if (window.__SABKI_SOCH_UI_LOADED__) {
         return;
     }
     window.__SABKI_SOCH_UI_LOADED__ = true;
 
-    // Create floating button
     const createFloatingButton = () => {
         const button = document.createElement('div');
         button.id = 'sabkisoch-float-btn';
         button.title = 'SabkiSoch - AI Memory (Ctrl+Shift+S)';
 
-        // Create text node instead of using innerHTML
         const textNode = document.createTextNode('🧠');
         button.appendChild(textNode);
 
@@ -59,7 +75,6 @@
         return button;
     };
 
-    // Create modal overlay
     const createModal = () => {
         const overlay = document.createElement('div');
         overlay.id = 'sabkisoch-modal-overlay';
@@ -81,7 +96,6 @@
             fontFamily: 'system-ui, -apple-system, sans-serif'
         });
 
-        // Modal container
         const modal = document.createElement('div');
         modal.id = 'sabkisoch-modal';
 
@@ -97,14 +111,12 @@
             overflow: 'auto'
         });
 
-        // Modal content - create using DOM methods to avoid CSP issues
         const modalContent = document.createElement('div');
         Object.assign(modalContent.style, {
             padding: '28px 24px 24px 24px',
             color: '#1a1a1a'
         });
 
-        // Header
         const header = document.createElement('div');
         Object.assign(header.style, {
             textAlign: 'center',
@@ -134,7 +146,6 @@
         header.appendChild(title);
         header.appendChild(subtitle);
 
-        // Button container
         const buttonContainer = document.createElement('div');
         Object.assign(buttonContainer.style, {
             display: 'flex',
@@ -143,7 +154,6 @@
             marginBottom: '24px'
         });
 
-        // Create buttons
         const buttons = [
             { id: 'sabkisoch-store-btn', text: 'Store Current Chat', isDanger: false },
             { id: 'sabkisoch-inject-btn', text: 'Load Context to Chat', isDanger: false },
@@ -154,7 +164,7 @@
             const button = document.createElement('button');
             button.id = btnData.id;
             button.textContent = btnData.text;
-            button.dataset.originalText = btnData.text; // Store original text for restoration
+            button.dataset.originalText = btnData.text;
 
             Object.assign(button.style, {
                 width: '100%',
@@ -175,7 +185,6 @@
             buttonContainer.appendChild(button);
         });
 
-        // Help text
         const helpText = document.createElement('div');
         Object.assign(helpText.style, {
             background: 'rgba(250, 250, 250, 0.8)',
@@ -230,7 +239,6 @@
         helpText.appendChild(helpTitle);
         helpText.appendChild(helpList);
 
-        // Limit info section
         const limitInfo = document.createElement('div');
         limitInfo.className = 'limit-info';
         Object.assign(limitInfo.style, {
@@ -271,7 +279,6 @@
         limitInfo.appendChild(limitInfoP2);
         limitInfo.appendChild(limitInfoP3);
 
-        // Status div
         const statusDiv = document.createElement('div');
         statusDiv.id = 'sabkisoch-status';
         Object.assign(statusDiv.style, {
@@ -286,7 +293,6 @@
             boxShadow: '0 2px 8px rgba(0, 0, 0, 0.04)'
         });
 
-        // Footer
         const footer = document.createElement('div');
         Object.assign(footer.style, {
             marginTop: '24px',
@@ -312,7 +318,6 @@
         footer.appendChild(footerText);
         footer.appendChild(footerLink);
 
-        // Assemble modal content
         modalContent.appendChild(header);
         modalContent.appendChild(buttonContainer);
         modalContent.appendChild(helpText);
@@ -325,14 +330,12 @@
         overlay.appendChild(modal);
         document.body.appendChild(overlay);
 
-        // Close on overlay click
         overlay.addEventListener('click', (e) => {
             if (e.target === overlay) {
                 toggleModal();
             }
         });
 
-        // Add button hover effects
         const modalButtons = modal.querySelectorAll('button');
         modalButtons.forEach(btn => {
             btn.addEventListener('mouseenter', () => {
@@ -349,13 +352,11 @@
             });
         });
 
-        // Connect button actions
         connectButtonActions();
 
         return overlay;
     };
 
-    // Toggle modal visibility
     const toggleModal = () => {
         const overlay = document.getElementById('sabkisoch-modal-overlay');
         const modal = document.getElementById('sabkisoch-modal');
@@ -380,14 +381,12 @@
         }
     };
 
-    // Connect button actions to content script
     const connectButtonActions = () => {
         document.getElementById('sabkisoch-store-btn').addEventListener('click', () => {
             setButtonLoading('sabkisoch-store-btn', 'Storing...');
-            // Send message to content script via window.postMessage
             window.postMessage({
-                type: 'SABKI_SOCH_ACTION',
-                action: 'store_context'
+                type: MESSAGE_TYPES.ACTION,
+                action: ACTIONS.STORE_CONTEXT
             }, '*');
         });
 
@@ -399,19 +398,17 @@
             if (confirm('Are you sure you want to clear all stored data?')) {
                 setButtonLoading('sabkisoch-clear-btn', 'Clearing...');
                 window.postMessage({
-                    type: 'SABKI_SOCH_ACTION',
-                    action: 'clear_data'
+                    type: MESSAGE_TYPES.ACTION,
+                    action: ACTIONS.CLEAR_DATA
                 }, '*');
             }
         });
     };
 
-    // Button loading state management
     const setButtonLoading = (buttonId, loadingText) => {
         const button = document.getElementById(buttonId);
         if (!button) return;
 
-        // Store original text
         button.dataset.originalText = button.textContent;
         button.textContent = loadingText;
         button.disabled = true;
@@ -459,35 +456,30 @@
         }, 3000);
     };
 
-    // Listen for responses from content script
     window.addEventListener('message', (event) => {
-        if (!event.data || event.data.type !== 'SABKI_SOCH_RESPONSE') return;
+        if (!event.data || event.data.type !== MESSAGE_TYPES.RESPONSE) return;
 
         const { action, success, message } = event.data;
 
-        // Update button states based on action
-        if (action === 'store_context') {
+        if (action === ACTIONS.STORE_CONTEXT) {
             if (success) {
                 setButtonSuccess('sabkisoch-store-btn', '✅ Stored!');
             } else {
                 setButtonError('sabkisoch-store-btn', '❌ Failed');
             }
-        } else if (action === 'inject_context') {
+        } else if (action === ACTIONS.INJECT_CONTEXT) {
             if (success) {
                 setButtonSuccess('sabkisoch-inject-btn', '✅ Loaded!');
             } else {
                 setButtonError('sabkisoch-inject-btn', '❌ Failed');
             }
-        } else if (action === 'load_context_by_id') {
+        } else if (action === ACTIONS.LOAD_CONTEXT_BY_ID) {
             if (success) {
                 setButtonSuccess('sabkisoch-inject-btn', '✅ Loaded & Sent!');
-                // Close context selection modal
                 closeContextSelectionModal();
-                // Close main modal too
                 toggleModal();
             } else {
                 setButtonError('sabkisoch-inject-btn', '❌ Failed');
-                // Show error in context modal
                 const contextList = document.getElementById('sabkisoch-context-list-container');
                 if (contextList) {
                     const errorDiv = document.createElement('div');
@@ -503,10 +495,9 @@
                     contextList.appendChild(errorDiv);
                 }
             }
-        } else if (action === 'clear_data') {
+        } else if (action === ACTIONS.CLEAR_DATA) {
             if (success) {
                 setButtonSuccess('sabkisoch-clear-btn', '✅ Cleared!');
-                // Auto-close modal on successful clear
                 setTimeout(() => {
                     toggleModal();
                 }, 1500);
@@ -518,7 +509,6 @@
         showStatus(success ? 'success' : 'error', message);
     });
 
-    // Show status message
     const showStatus = (type, message) => {
         const status = document.getElementById('sabkisoch-status');
         if (!status) return;
@@ -541,7 +531,6 @@
         }, 3000);
     };
 
-    // Context Selection Modal Functions
     const createContextSelectionModal = () => {
         const overlay = document.createElement('div');
         overlay.id = 'sabkisoch-context-modal-overlay';
@@ -580,7 +569,6 @@
             flexDirection: 'column'
         });
 
-        // Header
         const header = document.createElement('div');
         Object.assign(header.style, {
             padding: '20px 24px',
@@ -633,7 +621,6 @@
         header.appendChild(title);
         header.appendChild(closeBtn);
 
-        // Body
         const body = document.createElement('div');
         body.id = 'sabkisoch-context-list-container';
         Object.assign(body.style, {
@@ -647,7 +634,6 @@
         overlay.appendChild(modal);
         document.body.appendChild(overlay);
 
-        // Close on overlay click
         overlay.addEventListener('click', (e) => {
             if (e.target === overlay) {
                 closeContextSelectionModal();
@@ -674,14 +660,13 @@
         }, 10);
 
         try {
-            // Request contexts from content script
             const contexts = await new Promise((resolve) => {
                 window.postMessage({
-                    type: 'SABKI_SOCH_GET_CONTEXTS'
+                    type: MESSAGE_TYPES.GET_CONTEXTS
                 }, '*');
 
                 const handleResponse = (event) => {
-                    if (event.data && event.data.type === 'SABKI_SOCH_CONTEXTS_RESPONSE') {
+                    if (event.data && event.data.type === MESSAGE_TYPES.CONTEXTS_RESPONSE) {
                         window.removeEventListener('message', handleResponse);
                         resolve(event.data);
                     }
@@ -689,7 +674,6 @@
 
                 window.addEventListener('message', handleResponse);
 
-                // Timeout after 5 seconds
                 setTimeout(() => {
                     window.removeEventListener('message', handleResponse);
                     resolve({ success: false, error: 'Timeout' });
@@ -714,10 +698,8 @@
     };
 
     const displayContextsList = (contexts) => {
-        console.log('Displaying contexts:', contexts);
         const container = document.getElementById('sabkisoch-context-list-container');
 
-        // Sort by time (newest first)
         contexts.sort((a, b) => {
             const timeA = new Date(a.metadata?.time || 0);
             const timeB = new Date(b.metadata?.time || 0);
@@ -786,8 +768,6 @@
             item.appendChild(time);
 
             item.addEventListener('click', () => {
-                console.log('Context clicked:', context);
-                console.log('Context ID:', context.id);
                 loadContextById(context.id);
             });
 
@@ -799,9 +779,7 @@
     };
 
     const loadContextById = async (contextId) => {
-        console.log('Loading context by ID:', contextId);
         try {
-            // Show loading state
             const contextList = document.getElementById('sabkisoch-context-list-container');
             if (contextList) {
                 const loadingDiv = document.createElement('div');
@@ -817,23 +795,14 @@
                 contextList.appendChild(loadingDiv);
             }
 
-            // Send message to content script to load specific context
-            console.log('Sending message to content script:', {
-                type: 'SABKI_SOCH_ACTION',
-                action: 'load_context_by_id',
-                context_id: contextId
-            });
             window.postMessage({
-                type: 'SABKI_SOCH_ACTION',
-                action: 'load_context_by_id',
+                type: MESSAGE_TYPES.ACTION,
+                action: ACTIONS.LOAD_CONTEXT_BY_ID,
                 context_id: contextId
             }, '*');
 
-            // Don't close modal yet - wait for response
-
         } catch (error) {
             console.error('Error loading context:', error);
-            // Show error in context modal if it exists
             const contextList = document.getElementById('sabkisoch-context-list-container');
             if (contextList) {
                 const errorDiv = document.createElement('div');
@@ -864,7 +833,6 @@
         }, 300);
     };
 
-    // Initialize UI components
     const initUI = () => {
         try {
             createFloatingButton();
@@ -874,7 +842,6 @@
         }
     };
 
-    // Listen for keyboard shortcut (Ctrl+Shift+S)
     document.addEventListener('keydown', (e) => {
         if (e.ctrlKey && e.shiftKey && e.key === 'S') {
             e.preventDefault();
@@ -882,14 +849,13 @@
         }
     });
 
-    // Initialize when DOM is ready
+
     if (document.readyState === 'loading') {
         document.addEventListener('DOMContentLoaded', initUI);
     } else {
         initUI();
     }
 
-    // Expose toggle function globally for content.js to use
     window.__SABKI_SOCH_TOGGLE_MODAL__ = toggleModal;
 
 })();

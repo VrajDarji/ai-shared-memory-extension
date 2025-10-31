@@ -1,187 +1,146 @@
-# 🚀 SabkiSoch Extension - Local Usage Guide
+# SabkiSoch Extension - Local Usage Guide
 
-## Quick Start (Extension + Hosted Backend)
+## Quick Start
 
-This guide shows you how to use the SabkiSoch extension with our hosted backend service.
+Use the SabkiSoch extension.
 
-### 📦 What You Need
+### Requirements
 
-- **Chrome Browser** (or any Chromium-based browser)
-- **Extension folder** (the `extension/` directory from this project)
-- **Internet connection** (to connect to our hosted backend)
+- Chrome Browser (or Chromium-based browser)
+- Extension folder from this project
+- Internet connection
 
-### 🛠️ Installation Steps
+### Installation
 
-#### 1. **Download Extension Files**
-- Download or clone this repository
-- Navigate to the `extension/` folder
+1. **Download Extension Files**
+   - Clone repository and navigate to `extension/` folder
 
-#### 2. **Load Extension in Chrome**
-1. Open Chrome and go to `chrome://extensions/`
-2. Enable **Developer mode** (toggle in top-right corner)
-3. Click **"Load unpacked"**
-4. Select the `extension/` folder
-5. The extension should now appear in your extensions list
+2. **Load Extension in Chrome**
+   - Open `chrome://extensions/`
+   - Enable Developer mode (top-right toggle)
+   - Click "Load unpacked"
+   - Select the `extension/` folder
 
-#### 3. **Pin Extension (Optional)**
-- Click the puzzle piece icon in Chrome toolbar
-- Find "SabkiSoch" and click the pin icon to keep it visible
+3. **Pin Extension (Optional)**
+   - Click puzzle piece icon in Chrome toolbar
+   - Pin "SabkiSoch" for quick access
 
-### 🌐 Backend Options
+### Backend Options
 
-#### **Option 1: Use Our Hosted Backend (Recommended)**
-- **No setup required**: Extension automatically connects to our hosted service
-- **All features available**: Vector embeddings, AI summaries, persistent storage
-- **Always up-to-date**: We maintain and update the backend
-- **Free to use**: No cost for basic usage
+**Option 2: Self-Host Backend**
+- Full control and privacy
+- Requires manual setup
+- See `README.md` for instructions
 
-#### **Option 2: Self-Host Backend (Advanced)**
-- **Full control**: Host your own backend server
-- **Privacy**: Your data stays on your own server
-- **Customization**: Modify backend as needed
-- **See**: `README.md` for self-hosting instructions
+### Usage
 
-### 🎯 How to Use
+**Basic Actions:**
+1. Click the extension icon
+2. **Store Context** - Save current page conversations
+3. **Load Context** - Retrieve saved conversations
+4. **Generate & Send Context** - Create AI summary and send
 
-#### **On Any Website:**
-1. **Click the SabkiSoch extension icon** (🧠 brain icon)
-2. **Click "Store Context"** to save current page conversations with AI embeddings
-3. **Click "Load Context"** to retrieve and inject saved conversations
-4. **Click "Generate & Send Context"** to create intelligent AI summary and send it
+**Supported Sites:**
+- Gemini (gemini.google.com)
+- ChatGPT (chat.openai.com)
+- Claude (claude.ai)
+- Other chat-based websites
 
-#### **Supported Websites:**
-- ✅ **Gemini** (gemini.google.com)
-- ✅ **ChatGPT** (chat.openai.com)
-- ✅ **Claude** (claude.ai)
-- ✅ **Any chat-based website**
+### Features
 
-### 🔧 Features Available
+**With Hosted Backend:**
+- Vector embeddings for semantic search
+- AI-generated summaries using Gemini
+- Persistent storage across sessions
+- Smart context injection
+- User-specific data isolation
 
-#### **✅ With Hosted Backend:**
-- **Vector Embeddings**: Semantic search through your conversations
-- **AI-Generated Summaries**: Intelligent context summarization using Gemini
-- **Persistent Storage**: Data survives browser restarts
-- **Smart Context Injection**: Only relevant context is sent to AI
-- **User-Specific Data**: Each user's data is isolated and secure
-- **Cross-Device Sync**: Access your data from different devices (future feature)
+**UI Features:**
+- Floating interface in bottom-right corner
+- Centered modal with controls
+- Loading states and auto-close
 
-#### **🎨 UI Features:**
-- **Floating Interface**: Brain icon appears in bottom-right corner
-- **Click to Open**: Opens centered modal with all controls
-- **Modern Design**: Glass-morphism with smooth animations
-- **Responsive**: Works on all screen sizes
-- **Loading States**: Visual feedback during API calls
-- **Auto-Close**: Popup closes automatically after successful operations
+### Troubleshooting
 
-### 🔍 Troubleshooting
+**Extension Not Loading:**
+- Select `extension/` folder, not root folder
+- Enable Developer mode
+- Refresh extensions page
 
-#### **Extension Not Loading:**
-- Make sure you selected the `extension/` folder (not the root project folder)
-- Check that Developer mode is enabled
-- Try refreshing the extensions page
+**Backend Connection Issues:**
+- Check internet connection
+- Verify backend service status
+- Check browser console for errors
 
-#### **Backend Connection Issues:**
-- Check your internet connection
-- Ensure our hosted backend is running (check status at our service URL)
-- Look for error messages in the browser console
-- Try refreshing the page and reloading the extension
+**Context Not Saving:**
+- Only conversation content is saved
+- Must be on supported chat website
+- Check console for API errors
 
-#### **Context Not Saving:**
-- The extension only saves conversation content, not UI elements
-- Make sure you're on a supported chat website
-- Try scrolling to load more conversation history
-- Check browser console for any API errors
+**Context Not Injecting:**
+- Click "Load Context" first
+- Ensure you're in chat input field
+- Verify backend connection
 
-#### **Context Not Injecting:**
-- Click "Load Context" first to retrieve saved data
-- Make sure you're in a chat input field
-- The extension will automatically find and use the send button
-- Verify backend connection is working
+### Keyboard Shortcuts
 
-### 📱 Keyboard Shortcuts
+- **Ctrl+Shift+S** - Toggle floating modal
 
-- **Ctrl+Shift+S**: Toggle the floating modal (on supported sites)
+### Best Practices
 
-### 🎯 Best Practices
+- Store context regularly after important discussions
+- Clear old data periodically
+- Test functionality on different sites
+- Verify backend status before use
 
-#### **For Best Results:**
-1. **Store Context Regularly**: Save conversations after important discussions
-2. **Use Descriptive Context**: The extension extracts conversation content automatically
-3. **Clear Old Data**: Use "Clear My Data" to remove outdated information
-4. **Test on Different Sites**: The extension works across multiple AI chat platforms
-5. **Check Backend Status**: Ensure our hosted service is running for full functionality
+**Supported Content:**
+- Text messages
+- Code blocks
+- Questions and answers
+- AI responses
 
-#### **Supported Content Types:**
-- ✅ **Text Messages**: All text-based conversations
-- ✅ **Code Blocks**: Code snippets and technical discussions
-- ✅ **Questions & Answers**: Q&A format conversations
-- ✅ **AI Responses**: Both your questions and AI responses
-- ❌ **Images**: Image content is not captured
-- ❌ **Files**: File attachments are not saved
+**Not Supported:**
+- Images
+- File attachments
 
-### 🔒 Privacy & Security
+### Privacy & Security
 
-#### **Hosted Backend:**
-- **Secure API**: All communication uses HTTPS
-- **User Isolation**: Each user's data is completely separate
-- **No Data Sharing**: Your conversations are never shared with other users
-- **Encrypted Storage**: Data is encrypted at rest and in transit
+**Hosted Backend:**
+- HTTPS communication
+- User data isolation
+- No data sharing between users
+- Encrypted storage
 
-#### **Extension Security:**
-- **CSP Compliant**: Follows Chrome's Content Security Policy
-- **No External Scripts**: All code runs locally in your browser
-- **Minimal Permissions**: Only requests necessary browser permissions
+**Extension:**
+- CSP compliant
+- Local code execution
+- Minimal permissions
 
-### 🚀 Advanced Usage
+### Advanced Usage
 
-#### **Self-Hosting Backend:**
-If you prefer to host your own backend:
-1. **Clone the repository**: Get the full source code
-2. **Set up Python environment**: Install dependencies
-3. **Configure environment**: Set up API keys and database
-4. **Update extension**: Point to your local backend URL
-5. **See**: `README.md` for detailed self-hosting instructions
+**Self-Hosting:**
+1. Clone repository
+2. Set up Python environment
+3. Configure API keys and database
+4. Update extension backend URL
+5. See `README.md` for details
 
-#### **Customization Options:**
-- **Backend URL**: Change to point to your own server
-- **API Keys**: Use your own Gemini API key
-- **Database**: Use your own ChromaDB instance
-- **Features**: Modify backend functionality as needed
+### Support
 
-### 📞 Support
+**Need Help?**
+- Check service status page
+- Review browser console errors
+- Check extension console logs
+- Report issues on GitHub
 
-#### **Need Help?**
-- **Check our status page**: Ensure hosted backend is running
-- **Browser console**: Look for error messages
-- **Extension logs**: Check extension console for debugging info
-- **GitHub Issues**: Report bugs or request features
+### Updates
 
-#### **Service Status:**
-- **Hosted Backend**: [Check our service status]
-- **API Documentation**: Available at our hosted backend URL
-- **Health Check**: Backend health endpoint for monitoring
+**Extension:** Download new files and reload manually
 
-### 🔄 Updates
-
-#### **Extension Updates:**
-- **Manual updates**: Download new extension files and reload
-- **Version checking**: Extension will notify of available updates
-- **Backward compatibility**: New versions work with existing data
-
-#### **Backend Updates:**
-- **Automatic updates**: We maintain and update the hosted backend
-- **API versioning**: Backward compatible API changes
-- **Feature announcements**: New features are announced via extension
+**Backend:** Automatic updates maintained by us
 
 ---
 
-## 🎉 You're All Set!
+## Ready to Use
 
-The SabkiSoch extension is now ready to use with our hosted backend. Simply load the extension and start storing your AI conversations with intelligent context management! 🧠✨
-
-### 🌟 What Makes This Special:
-- **No Chrome Web Store**: Load directly as unpacked extension
-- **Hosted Backend**: No local setup required for full features
-- **Intelligent Context**: AI-powered conversation summarization
-- **Cross-Platform**: Works on any Chromium-based browser
-- **Privacy-First**: Your data is isolated and secure
+Load the extension and start storing AI conversations with intelligent context management.

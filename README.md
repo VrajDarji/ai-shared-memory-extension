@@ -30,12 +30,21 @@ A Chrome extension that enables storage and retrieval of AI chat conversations a
 
 ### Chrome Extension
 - Location: `extension/`
-- Components:
-  - `background.js` - Service worker for API communication
-  - `content.js` - Content script for page interaction
-  - `injected.js` - API interception
-  - `component.js` - Floating UI (brain icon + modal)
+- **Components**:
+  - `content.js` - Message orchestration & communication layer (186 lines)
+  - `component.js` - Floating UI component (brain icon + modal, 861 lines)
   - `popup.html/js` - Extension popup interface
+  - `injected.js` - API call interception
+  - `background.js` - Service worker for background tasks
+- **Utilities** (`utils/`):
+  - `constants.js` - Message types and action constants
+  - `api.js` - Backend API communication functions
+  - `action-handlers.js` - Action handler functions
+  - `scraping.js` - Chat content extraction utilities
+  - `dom-utils.js` - DOM manipulation and UI utilities
+  - `storage.js` - User data and storage management
+  - `injection.js` - Script injection utilities
+  - `index.js` - Central export file
 
 ## Installation
 
@@ -151,28 +160,39 @@ AI-Shared-Memory-Extension/
 │   │   └── formatters.py   # Text formatting utilities
 │   └── requirements.txt
 ├── extension/
-│   ├── manifest.json
-│   ├── background.js
-│   ├── content.js
-│   ├── injected.js
-│   ├── component.js
-│   ├── popup.html
-│   ├── popup.js
-│   └── icons/
+│   ├── manifest.json       # Extension manifest
+│   ├── content.js          # Communication layer (186 lines)
+│   ├── component.js        # Floating UI component (861 lines)
+│   ├── popup.html          # Popup UI
+│   ├── popup.js            # Popup logic
+│   ├── injected.js         # API interception
+│   ├── background.js       # Service worker
+│   ├── utils/              # Modular utilities
+│   │   ├── constants.js    # Message types & actions
+│   │   ├── api.js          # Backend API functions
+│   │   ├── action-handlers.js # Action handlers
+│   │   ├── scraping.js     # Content extraction
+│   │   ├── dom-utils.js    # DOM manipulation
+│   │   ├── storage.js       # User data management
+│   │   ├── injection.js    # Script injection
+│   │   └── index.js         # Central exports
+│   └── icons/              # Extension icons
 └── README.md
 ```
 
-## Backend Architecture
+## Architecture
+
+### Backend Architecture
 
 The backend follows modular architecture with clear separation of concerns:
 
-- **API Layer** (`app.py`): HTTP endpoints and request handling
+- **API Layer** (`app.py`): HTTP endpoints and request handling (162 lines)
 - **Business Logic** (`src/`): Data management and AI operations
+  - `context.py` - Store, retrieve, and clear conversations
+  - `generate_context.py` - AI-powered context generation
 - **Data Models** (`models/`): Pydantic validation models
 - **Utilities** (`utils/`): Gemini integration and text formatting
 - **Configuration** (`constants.py`): Centralized settings
-
-Benefits: Maintainability, testability, scalability, and type safety.
 
 ## Supported Platforms
 
