@@ -18,12 +18,38 @@
         LOAD_CONTEXT: 'load_context',
         LOAD_CONTEXT_BY_ID: 'load_context_by_id',
         CLEAR_DATA: 'clear_data',
-        INJECT_CONTEXT: 'inject_context'
+        INJECT_CONTEXT: 'inject_context',
+        DELETE_CONTEXT: 'delete_context'
     };
 
     if (window.__SABKI_SOCH_UI_LOADED__) {
         return;
     }
+
+    const ALLOWED_DOMAINS = [
+        'chat.openai.com',
+        'chatgpt.com',
+        'claude.ai',
+        'gemini.google.com',
+        'chat.deepseek.com',
+        'www.deepseek.com',
+        'deepseek.com',
+        'perplexity.ai',
+        'poe.com',
+        'huggingface.co',
+        'huggingface.com'
+    ];
+
+    // Check if current domain is whitelisted
+    const hostname = window.location.hostname;
+    const isWhitelisted = ALLOWED_DOMAINS.some(domain =>
+        hostname === domain || hostname.endsWith('.' + domain)
+    );
+
+    if (!isWhitelisted) {
+        return;
+    }
+
     window.__SABKI_SOCH_UI_LOADED__ = true;
 
     const createFloatingButton = () => {
@@ -504,6 +530,16 @@
             } else {
                 setButtonError('sabkisoch-clear-btn', '❌ Failed');
             }
+        } else if (action === ACTIONS.DELETE_CONTEXT) {
+            if (success) {
+
+                const overlay = document.getElementById('sabkisoch-context-modal-overlay');
+                if (overlay && overlay.style.display !== 'none') {
+                    openContextSelectionModal();
+                }
+            }
+            showStatus(success ? 'success' : 'error', message);
+            return; // Don't show status again below for delete action
         }
 
         showStatus(success ? 'success' : 'error', message);
@@ -721,7 +757,11 @@
                 borderRadius: '12px',
                 cursor: 'pointer',
                 transition: 'all 0.2s ease',
-                background: 'rgba(255, 255, 255, 0.8)'
+                background: 'rgba(255, 255, 255, 0.8)',
+                display: 'flex',
+                justifyContent: 'space-between',
+                alignItems: 'center',
+                gap: '12px'
             });
 
             item.addEventListener('mouseenter', () => {
@@ -736,6 +776,12 @@
                 item.style.background = 'rgba(255, 255, 255, 0.8)';
                 item.style.transform = 'translateY(0)';
                 item.style.boxShadow = 'none';
+            });
+
+            const contentWrapper = document.createElement('div');
+            Object.assign(contentWrapper.style, {
+                flex: '1',
+                minWidth: '0'
             });
 
             const title = document.createElement('div');
@@ -764,10 +810,47 @@
                 color: '#666'
             });
 
-            item.appendChild(title);
-            item.appendChild(time);
+            contentWrapper.appendChild(title);
+            contentWrapper.appendChild(time);
 
-            item.addEventListener('click', () => {
+            const deleteBtn = document.createElement('button');
+            deleteBtn.innerHTML = '🗑️';
+            deleteBtn.title = 'Delete this context';
+            Object.assign(deleteBtn.style, {
+                background: 'none',
+                border: 'none',
+                cursor: 'pointer',
+                fontSize: '16px',
+                padding: '4px 8px',
+                borderRadius: '6px',
+                transition: 'all 0.2s ease',
+                flexShrink: '0',
+                opacity: '0.6'
+            });
+
+            deleteBtn.addEventListener('mouseenter', () => {
+                deleteBtn.style.opacity = '1';
+                deleteBtn.style.background = 'rgba(254, 202, 202, 0.3)';
+            });
+
+            deleteBtn.addEventListener('mouseleave', () => {
+                deleteBtn.style.opacity = '0.6';
+                deleteBtn.style.background = 'none';
+            });
+
+            deleteBtn.addEventListener('click', (e) => {
+                e.stopPropagation();
+                deleteContextById(context.id, context.metadata?.title || 'Untitled Conversation');
+            });
+
+            item.appendChild(contentWrapper);
+            item.appendChild(deleteBtn);
+
+            item.addEventListener('click', (e) => {
+                // Don't trigger load if clicking on delete button
+                if (e.target === deleteBtn || deleteBtn.contains(e.target)) {
+                    return;
+                }
                 loadContextById(context.id);
             });
 
@@ -817,6 +900,23 @@
                 contextList.innerHTML = '';
                 contextList.appendChild(errorDiv);
             }
+        }
+    };
+
+    const deleteContextById = async (contextId, contextTitle) => {
+        if (!confirm(`Are you sure you want to delete "${contextTitle}"?`)) {
+            return;
+        }
+
+        try {
+            window.postMessage({
+                type: MESSAGE_TYPES.ACTION,
+                action: ACTIONS.DELETE_CONTEXT,
+                context_id: contextId
+            }, '*');
+        } catch (error) {
+            console.error('Error deleting context:', error);
+            showStatus('error', 'Failed to delete context. Please try again.');
         }
     };
 

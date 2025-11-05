@@ -102,6 +102,14 @@ window.addEventListener('message', async (event) => {
                 result = await handleClearData(await getOrCreateUserId(), BACKEND_URL);
                 break;
 
+            case ACTIONS.DELETE_CONTEXT:
+                result = await handleDeleteContext(
+                    event.data.context_id,
+                    await getOrCreateUserId(),
+                    BACKEND_URL
+                );
+                break;
+
             default:
                 result = { success: false, message: `Unknown action: ${action}` };
         }

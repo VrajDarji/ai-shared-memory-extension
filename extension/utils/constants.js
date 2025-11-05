@@ -20,7 +20,8 @@ const ACTIONS = {
     LOAD_CONTEXT: 'load_context',
     LOAD_CONTEXT_BY_ID: 'load_context_by_id',
     CLEAR_DATA: 'clear_data',
-    INJECT_CONTEXT: 'inject_context'
+    INJECT_CONTEXT: 'inject_context',
+    DELETE_CONTEXT: 'delete_context'
 };
 
 const CHROME_RUNTIME_ACTIONS = {

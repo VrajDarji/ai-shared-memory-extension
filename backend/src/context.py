@@ -236,3 +236,87 @@ async def clear_user_data(user_id: str, collection) -> Dict[str, Any]:
     except Exception as e:
         print(f"Error clearing user data: {e}")
         raise HTTPException(status_code=500, detail=f"Error clearing user data: {str(e)}")
+
+
+async def delete_context_by_id(context_id: str, user_id: str, collection) -> Dict[str, Any]:
+    """
+    Delete a specific context by context_id, verifying it belongs to user_id.
+    
+    Args:
+        context_id: The context ID to delete
+        user_id: The user ID (to verify ownership)
+        collection: ChromaDB collection instance
+        
+    Returns:
+        Dictionary with success status and deleted context info
+        
+    Raises:
+        HTTPException: If validation fails, context not found, or deletion error occurs
+    """
+    try:
+        # Validate inputs
+        if not user_id or len(user_id.strip()) == 0:
+            raise HTTPException(status_code=400, detail="user_id is required")
+        
+        if not context_id or len(context_id.strip()) == 0:
+            raise HTTPException(status_code=400, detail="context_id is required")
+        
+        user_id = user_id.strip()
+        context_id = context_id.strip()
+        
+        # Verify context exists and belongs to user
+        try:
+            results = collection.get(
+                ids=[context_id],
+                where={"user_id": user_id}
+            )
+            
+            documents = results.get("documents", [])
+            metadatas = results.get("metadatas", [])
+            
+            if not documents:
+                raise HTTPException(
+                    status_code=404, 
+                    detail="Context not found or doesn't belong to user"
+                )
+            
+            # Get metadata for response
+            metadata = metadatas[0] if metadatas else {}
+            title = metadata.get('title', 'Untitled')
+            
+        except HTTPException:
+            raise
+        except Exception as e:
+            print(f"Error verifying context: {e}")
+            raise HTTPException(
+                status_code=500, 
+                detail=f"Error verifying context: {str(e)}"
+            )
+        
+        # Delete the context by ID
+        try:
+            collection.delete(ids=[context_id])
+            print(f"✅ Deleted context {context_id} for user {user_id}")
+        except Exception as e:
+            print(f"Error deleting context: {e}")
+            raise HTTPException(
+                status_code=500, 
+                detail=f"Error deleting context: {str(e)}"
+            )
+        
+        return {
+            "ok": True,
+            "message": f"Deleted context: {title}",
+            "context_id": context_id,
+            "user_id": user_id,
+            "title": title
+        }
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        print(f"Error deleting context by ID: {e}")
+        raise HTTPException(
+            status_code=500, 
+            detail=f"Error deleting context: {str(e)}"
+        )

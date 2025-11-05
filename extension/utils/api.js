@@ -146,3 +146,35 @@ async function clearData(userId, backendUrl) {
         };
     }
 }
+
+/**
+ * Delete a specific context by context_id
+ * @param {string} contextId - Context ID to delete
+ * @param {string} userId - User ID to verify ownership
+ * @param {string} backendUrl - Backend API URL
+ * @returns {Promise<{ok: boolean, message?: string, error?: string}>}
+ */
+async function deleteContext(contextId, userId, backendUrl) {
+    try {
+        const response = await fetch(`${backendUrl}/delete_context/${contextId}?user_id=${encodeURIComponent(userId)}`, {
+            method: 'DELETE',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            credentials: 'omit',
+        });
+
+        if (!response.ok) {
+            throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+        }
+
+        const result = await response.json();
+        return result;
+    } catch (error) {
+        console.error('❌ Error deleting context:', error);
+        return {
+            ok: false,
+            error: error.message
+        };
+    }
+}

@@ -32,7 +32,8 @@ from src.context import (
     store_conversation,
     get_all_conversations,
     clear_all_data as clear_all_data_func,
-    clear_user_data as clear_user_data_func
+    clear_user_data as clear_user_data_func,
+    delete_context_by_id as delete_context_by_id_func
 )
 from src.generate_context import (
     generate_context_from_all_conversations,
@@ -111,6 +112,14 @@ async def clear_user_data(user_id: str):
     """Clear all data for a specific user"""
     return await clear_user_data_func(user_id, collection)
 
+@app.delete("/delete_context/{context_id}")
+async def delete_context(
+    context_id: str,
+    user_id: str = Query(..., description="User ID to verify ownership")
+):
+    """Delete a specific context by context_id, verifying it belongs to user_id"""
+    return await delete_context_by_id_func(context_id, user_id, collection)
+
 
 @app.post("/generate_context")
 async def generate_context(request: ContextRequest):
@@ -141,6 +150,7 @@ async def root():
             "GET /generate_context/{context_id}": "Generate intelligent context summary for specific conversation",
             "DELETE /clear": "Clear all data",
             "DELETE /clear/{user_id}": "Clear data for specific user",
+            "DELETE /delete_context/{context_id}": "Delete a specific context by context_id (requires user_id query param)",
             "GET /health": "Health check"
         }
     }

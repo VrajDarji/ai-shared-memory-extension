@@ -115,6 +115,19 @@ async function handleClearData(userId, backendUrl) {
 }
 
 /**
+ * Handle delete context action
+ */
+async function handleDeleteContext(contextId, userId, backendUrl) {
+    const result = await deleteContext(contextId, userId, backendUrl);
+    return {
+        success: result.ok,
+        message: result.ok
+            ? (result.message || 'Context deleted successfully')
+            : (result.error || 'Failed to delete context')
+    };
+}
+
+/**
  * Handle inject context action
  */
 async function handleInjectContext(backendUrl) {
